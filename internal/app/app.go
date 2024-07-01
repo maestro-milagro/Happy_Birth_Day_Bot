@@ -66,7 +66,7 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 		case "start":
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Birth Day in format YEAR-MONTH-DAY")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some := <-updates
 			birthDayS := some.Message.Text
@@ -81,41 +81,41 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 				birthDay,
 				update.Message.Chat.ID)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 		case "all":
 			msg, err := a.hb_service.All(ctx, update.Message.Chat.ID)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 		case "add":
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Enter First Name")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some := <-updates
 			tgName := some.Message.Text
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Last Name")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some = <-updates
 			tgName += " " + some.Message.Text
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Telegram UserName (starts with @)")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some = <-updates
 			userName := some.Message.Text
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Birth Day in format YEAR-MONTH-DAY")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some = <-updates
 			birthDayS := some.Message.Text
@@ -126,46 +126,60 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 			fmt.Println(birthDay)
 			msg, err = a.hb_service.AddUser(ctx, tgName, userName, birthDay, update.Message.Chat.ID)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 		case "sub":
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Telegram UserName (starts with @)")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some := <-updates
 			userName := some.Message.Text
 			msg, err := a.hb_service.Sub(ctx, update.Message.Chat.UserName, userName, update.Message.Chat.ID)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 		case "tg_id":
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Telegram UserName (starts with @)")
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			some := <-updates
 			userName := some.Message.Text
 			msg, err := a.hb_service.ByID(ctx, userName, update.Message.Chat.ID)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 		case "subs":
 			msg, err := a.hb_service.WhoSub(ctx, update.Message.Chat.UserName, update.Message.Chat.ID)
 			if err != nil {
-				log.Panic(err)
+				log.Println(err)
 			}
 			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				log.Println(err)
+			}
+		case "unsub":
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Telegram UserName (starts with @)")
+			if _, err := bot.Send(msg); err != nil {
+				log.Println(err)
+			}
+			some := <-updates
+			userName := some.Message.Text
+			msg, err := a.hb_service.Unsub(ctx, update.Message.Chat.UserName, userName, update.Message.Chat.ID)
+			if err != nil {
+				log.Println(err)
+			}
+			if _, err := bot.Send(msg); err != nil {
+				log.Println(err)
 			}
 		}
 		//if _, err := bot.Send(msg); err != nil {

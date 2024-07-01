@@ -8,13 +8,13 @@ import (
 	"github.com/mattn/go-sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 	"hb_bot/internal/domain"
+	"log"
 	"time"
 )
 
 var (
 	ErrUserExist    = errors.New("user already exist")
 	ErrUserNotFound = errors.New("user not found")
-	ErrAppNotFound  = errors.New("app not found")
 )
 
 type HappyBDayDB interface {
@@ -23,6 +23,7 @@ type HappyBDayDB interface {
 	GetAll(ctx context.Context) ([]domain.User, error)
 	GetByID(ctx context.Context, tgName string) (domain.User, error)
 	GetWhoSub(ctx context.Context, tgName string) ([]domain.User, error)
+	UnSubSome(ctx context.Context, tgName string, subTgName string) (err error)
 }
 
 type Storage struct {
@@ -76,31 +77,44 @@ func (s *Storage) SubSome(ctx context.Context, tgName string, subTgName string) 
 }
 
 func (s *Storage) GetAll(ctx context.Context) ([]domain.User, error) {
-	stmt, err := s.db.Prepare("SELECT COUNT(*) FROM users ")
+	//stmt, err := s.db.Prepare("SELECT COUNT(*) FROM users ")
+	//
+	//if err != nil {
+	//	return []domain.User{}, err
+	//}
+	//
+	//row := stmt.QueryRowContext(ctx)
+	//
+	//var i int64
+	//
+	//err = row.Scan(&i)
 
-	if err != nil {
-		return []domain.User{}, err
+	//stmt, err = s.db.Prepare("SELECT * FROM users ")
+	//
+	//if err != nil {
+	//	return []domain.User{}, err
+	//}
+	//
+	//row = stmt.QueryRowContext(ctx)
+
+	//users := make([]domain.User, i)
+
+	var users []domain.User
+
+	rows, err := s.db.Query("SELECT * FROM users ")
+
+	for rows.Next() { // Iterate and fetch the records from result cursor
+		item := domain.User{}
+		err := rows.Scan(&item.UserName, &item.TgUserName, &item.BirthDay)
+		if err != nil {
+			log.Fatal(err)
+		}
+		users = append(users, item)
 	}
 
-	row := stmt.QueryRowContext(ctx)
-
-	var i int
-
-	err = row.Scan(&i)
-
-	stmt, err = s.db.Prepare("SELECT * FROM users ")
-
-	if err != nil {
-		return []domain.User{}, err
-	}
-
-	row = stmt.QueryRowContext(ctx)
-
-	users := make([]domain.User, i)
-
-	for a := range users {
-		err = row.Scan(&users[a].UserName, &users[a].TgUserName, &users[a].BirthDay)
-	}
+	//for a := range users {
+	//	err = row.Scan(&users[a].UserName, &users[a].TgUserName, &users[a].BirthDay)
+	//}
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -135,31 +149,44 @@ func (s *Storage) GetByID(ctx context.Context, tgName string) (domain.User, erro
 }
 
 func (s *Storage) GetWhoSub(ctx context.Context, tgName string) ([]domain.User, error) {
-	stmt, err := s.db.Prepare("SELECT COUNT(*) FROM subscribers AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?")
+	//stmt, err := s.db.Prepare("SELECT COUNT(*) FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?")
+	//
+	//if err != nil {
+	//	return []domain.User{}, err
+	//}
+	//
+	//row := stmt.QueryRowContext(ctx, tgName)
+	//
+	//var i int64
+	//
+	//err = row.Scan(&i)
+	//
+	//stmt, err = s.db.Prepare("SELECT u.user_name, s.sub_tg_id, u.birth_day FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?")
+	//
+	//if err != nil {
+	//	return []domain.User{}, err
+	//}
+	//
+	//row = stmt.QueryRowContext(ctx, tgName)
+	//
+	//users := make([]domain.User, i)
+	//
+	//for a := range users {
+	//	err = row.Scan(&users[a].UserName, &users[a].TgUserName, &users[a].BirthDay)
+	//}
+	var users []domain.User
 
-	if err != nil {
-		return []domain.User{}, err
+	rows, err := s.db.Query("SELECT u.user_name, s.sub_tg_id, u.birth_day FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?", tgName)
+
+	for rows.Next() { // Iterate and fetch the records from result cursor
+		item := domain.User{}
+		err := rows.Scan(&item.UserName, &item.TgUserName, &item.BirthDay)
+		if err != nil {
+			log.Fatal(err)
+		}
+		users = append(users, item)
 	}
-
-	row := stmt.QueryRowContext(ctx)
-
-	var i int
-
-	err = row.Scan(&i)
-
-	stmt, err = s.db.Prepare("SELECT s.sub_tg_id, u.user_name, u.birth_day FROM subscribers AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?")
-
-	if err != nil {
-		return []domain.User{}, err
-	}
-
-	row = stmt.QueryRowContext(ctx, tgName)
-
-	users := make([]domain.User, i)
-
-	for a := range users {
-		err = row.Scan(&users[a].UserName, &users[a].TgUserName, &users[a].BirthDay)
-	}
+	fmt.Println(users)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -169,4 +196,21 @@ func (s *Storage) GetWhoSub(ctx context.Context, tgName string) ([]domain.User, 
 		return []domain.User{}, err
 	}
 	return users, nil
+}
+
+func (s *Storage) UnSubSome(ctx context.Context, tgName string, subTgName string) (err error) {
+	stmt, err := s.db.Prepare("DELETE FROM subscriptions WHERE tg_id = ? AND sub_tg_id = ?")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecContext(ctx, tgName, subTgName)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	return nil
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"hb_bot/internal/domain"
@@ -17,6 +18,7 @@ type HBService interface {
 	All(ctx context.Context, chatID int64) (msg tgbotapi.MessageConfig, err error)
 	ByID(ctx context.Context, userName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
 	WhoSub(ctx context.Context, userName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
+	Unsub(ctx context.Context, userName string, subName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
 }
 
 type Service struct {
@@ -54,6 +56,12 @@ func (s *Service) Sub(
 	subName string,
 	chatID int64,
 ) (msg tgbotapi.MessageConfig, err error) {
+	if _, err = s.storage.GetByID(ctx, subName); err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			s.logger.Error("User not found", sl.Err(err))
+			return tgbotapi.NewMessage(chatID, "Cant found user with this @username"), err
+		}
+	}
 	err = s.storage.SubSome(ctx, userName, subName)
 	if err != nil {
 		s.logger.Error("Error while subbing", sl.Err(err))
@@ -85,6 +93,10 @@ func (s *Service) ByID(
 ) (msg tgbotapi.MessageConfig, err error) {
 	user, err := s.storage.GetByID(ctx, userName)
 	if err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			s.logger.Error("User not found", sl.Err(err))
+			return tgbotapi.NewMessage(chatID, "Cant found user with this @username"), err
+		}
 		s.logger.Error("Error while getting user by id", sl.Err(err))
 
 		return tgbotapi.MessageConfig{}, err
@@ -100,12 +112,32 @@ func (s *Service) WhoSub(
 ) (msg tgbotapi.MessageConfig, err error) {
 	users, err := s.storage.GetWhoSub(ctx, userName)
 	if err != nil {
-		s.logger.Error("Error while getting subscribers", sl.Err(err))
+		s.logger.Error("Error while getting Subscriptions list", sl.Err(err))
 
 		return tgbotapi.MessageConfig{}, err
 	}
-	s.logger.Info("Subscribers returned successfully")
+	s.logger.Info("Subscriptions list returned successfully")
+	if len(users) == 0 {
+		return tgbotapi.NewMessage(chatID, "You don't follow anyone"), nil
+	}
 	return tgbotapi.NewMessage(chatID, s.UsersToString(users)), nil
+}
+
+func (s *Service) Unsub(ctx context.Context, userName string, subName string, chatID int64) (msg tgbotapi.MessageConfig, err error) {
+	if _, err = s.storage.GetByID(ctx, userName); err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			s.logger.Error("User not found", sl.Err(err))
+			return tgbotapi.NewMessage(chatID, "Cant found user with this @username"), err
+		}
+	}
+	err = s.storage.UnSubSome(ctx, userName, subName)
+	if err != nil {
+		s.logger.Error("Error while unsubbing", sl.Err(err))
+
+		return tgbotapi.MessageConfig{}, err
+	}
+	s.logger.Info("Unsubbed successfully")
+	return tgbotapi.NewMessage(chatID, "You are no longer following this user"), nil
 }
 
 func (s *Service) UserToString(user domain.User) string {
