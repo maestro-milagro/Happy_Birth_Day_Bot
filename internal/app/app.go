@@ -8,6 +8,7 @@ import (
 	"hb_bot/internal/service"
 	"log"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -112,7 +113,7 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 				log.Println(err)
 			}
 			some = <-updates
-			userName := some.Message.Text
+			userName := strings.Trim(some.Message.Text, "@")
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Birth Day in format YEAR-MONTH-DAY")
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
@@ -137,7 +138,7 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 				log.Println(err)
 			}
 			some := <-updates
-			userName := some.Message.Text
+			userName := strings.Trim(some.Message.Text, "@")
 			msg, err := a.hb_service.Sub(ctx, update.Message.Chat.UserName, userName, update.Message.Chat.ID)
 			if err != nil {
 				log.Println(err)
@@ -145,13 +146,22 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
 			}
+			go func() {
+				msg, err = a.hb_service.IsSub(ctx, update.Message.Chat.UserName, userName, update.Message.Chat.ID)
+				if err != nil {
+					log.Println(err)
+				}
+				if _, err := bot.Send(msg); err != nil {
+					log.Println(err)
+				}
+			}()
 		case "tg_id":
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Telegram UserName (starts with @)")
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
 			}
 			some := <-updates
-			userName := some.Message.Text
+			userName := strings.Trim(some.Message.Text, "@")
 			msg, err := a.hb_service.ByID(ctx, userName, update.Message.Chat.ID)
 			if err != nil {
 				log.Println(err)
@@ -173,7 +183,7 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 				log.Println(err)
 			}
 			some := <-updates
-			userName := some.Message.Text
+			userName := strings.Trim(some.Message.Text, "@")
 			msg, err := a.hb_service.Unsub(ctx, update.Message.Chat.UserName, userName, update.Message.Chat.ID)
 			if err != nil {
 				log.Println(err)

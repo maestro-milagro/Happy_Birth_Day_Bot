@@ -9,6 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"hb_bot/internal/domain"
 	"log"
+	"reflect"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type HappyBDayDB interface {
 	GetByID(ctx context.Context, tgName string) (domain.User, error)
 	GetWhoSub(ctx context.Context, tgName string) ([]domain.User, error)
 	UnSubSome(ctx context.Context, tgName string, subTgName string) (err error)
+	IsSub(ctx context.Context, tgName string, subTgName string) (bool, error)
 }
 
 type Storage struct {
@@ -77,28 +79,6 @@ func (s *Storage) SubSome(ctx context.Context, tgName string, subTgName string) 
 }
 
 func (s *Storage) GetAll(ctx context.Context) ([]domain.User, error) {
-	//stmt, err := s.db.Prepare("SELECT COUNT(*) FROM users ")
-	//
-	//if err != nil {
-	//	return []domain.User{}, err
-	//}
-	//
-	//row := stmt.QueryRowContext(ctx)
-	//
-	//var i int64
-	//
-	//err = row.Scan(&i)
-
-	//stmt, err = s.db.Prepare("SELECT * FROM users ")
-	//
-	//if err != nil {
-	//	return []domain.User{}, err
-	//}
-	//
-	//row = stmt.QueryRowContext(ctx)
-
-	//users := make([]domain.User, i)
-
 	var users []domain.User
 
 	rows, err := s.db.Query("SELECT * FROM users ")
@@ -111,10 +91,6 @@ func (s *Storage) GetAll(ctx context.Context) ([]domain.User, error) {
 		}
 		users = append(users, item)
 	}
-
-	//for a := range users {
-	//	err = row.Scan(&users[a].UserName, &users[a].TgUserName, &users[a].BirthDay)
-	//}
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -149,31 +125,6 @@ func (s *Storage) GetByID(ctx context.Context, tgName string) (domain.User, erro
 }
 
 func (s *Storage) GetWhoSub(ctx context.Context, tgName string) ([]domain.User, error) {
-	//stmt, err := s.db.Prepare("SELECT COUNT(*) FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?")
-	//
-	//if err != nil {
-	//	return []domain.User{}, err
-	//}
-	//
-	//row := stmt.QueryRowContext(ctx, tgName)
-	//
-	//var i int64
-	//
-	//err = row.Scan(&i)
-	//
-	//stmt, err = s.db.Prepare("SELECT u.user_name, s.sub_tg_id, u.birth_day FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?")
-	//
-	//if err != nil {
-	//	return []domain.User{}, err
-	//}
-	//
-	//row = stmt.QueryRowContext(ctx, tgName)
-	//
-	//users := make([]domain.User, i)
-	//
-	//for a := range users {
-	//	err = row.Scan(&users[a].UserName, &users[a].TgUserName, &users[a].BirthDay)
-	//}
 	var users []domain.User
 
 	rows, err := s.db.Query("SELECT u.user_name, s.sub_tg_id, u.birth_day FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?", tgName)
@@ -213,4 +164,26 @@ func (s *Storage) UnSubSome(ctx context.Context, tgName string, subTgName string
 	}
 
 	return nil
+}
+
+func (s *Storage) IsSub(ctx context.Context, tgName string, subTgName string) (bool, error) {
+	stmt, err := s.db.Prepare("SELECT * FROM subscriptions WHERE tg_id = ? AND sub_tg_id = ?")
+	if err != nil {
+		return false, err
+	}
+
+	row := stmt.QueryRowContext(ctx, tgName, subTgName)
+
+	var subs domain.Subscriptions
+
+	err = row.Scan(&subs.SubTgId, &subs.TgId)
+
+	if err != nil && reflect.DeepEqual(subs, domain.Subscriptions{}) {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrUserNotFound
+		}
+		return false, err
+	}
+
+	return true, nil
 }

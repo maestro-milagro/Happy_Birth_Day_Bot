@@ -19,6 +19,7 @@ type HBService interface {
 	ByID(ctx context.Context, userName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
 	WhoSub(ctx context.Context, userName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
 	Unsub(ctx context.Context, userName string, subName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
+	IsSub(ctx context.Context, userName string, subName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
 }
 
 type Service struct {
@@ -138,6 +139,31 @@ func (s *Service) Unsub(ctx context.Context, userName string, subName string, ch
 	}
 	s.logger.Info("Unsubbed successfully")
 	return tgbotapi.NewMessage(chatID, "You are no longer following this user"), nil
+}
+
+func (s *Service) IsSub(ctx context.Context, userName string, subName string, chatID int64) (msg tgbotapi.MessageConfig, err error) {
+	user, err := s.storage.GetByID(ctx, subName)
+	if err != nil {
+		s.logger.Error("User not found", sl.Err(err))
+		return tgbotapi.MessageConfig{}, err
+	}
+	years := int(time.Now().Sub(user.BirthDay).Hours()/24/365) + 1
+	bd := user.BirthDay.AddDate(years, 0, 0)
+	timer := time.NewTimer(bd.Sub(time.Now()))
+	<-timer.C
+
+	flag, err := s.storage.IsSub(ctx, userName, subName)
+	if err != nil {
+		s.logger.Error("Error while isSub check", sl.Err(err))
+
+		return tgbotapi.MessageConfig{}, err
+	}
+	if !flag {
+		s.logger.Warn("User no longer subbing")
+
+		return tgbotapi.MessageConfig{}, nil
+	}
+	return tgbotapi.NewMessage(chatID, "Today is the user's: "+user.UserName+" birthday!!!"), nil
 }
 
 func (s *Service) UserToString(user domain.User) string {
