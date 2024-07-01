@@ -1,0 +1,6 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - go run ./cmd/migrator/main.go --storage-path=./storage/hb.db --migrations-path=./migrations
