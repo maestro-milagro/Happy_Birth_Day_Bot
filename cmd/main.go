@@ -8,6 +8,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -27,5 +29,16 @@ func main() {
 
 	application := app.New(logger, "./storage/hb.db")
 
-	application.Run(bot, context.Background())
+	go application.Run(bot, context.Background())
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+
+	sign := <-stop
+
+	logger.Info("stopping app", slog.String("signal", sign.String()))
+
+	application.Stop(bot)
+
+	logger.Info("app stopped")
 }

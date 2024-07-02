@@ -12,19 +12,6 @@ import (
 	"time"
 )
 
-var numericKeyboard = tgbotapi.NewReplyKeyboard(
-	tgbotapi.NewKeyboardButtonRow(
-		tgbotapi.NewKeyboardButton("1"),
-		tgbotapi.NewKeyboardButton("2"),
-		tgbotapi.NewKeyboardButton("3"),
-	),
-	tgbotapi.NewKeyboardButtonRow(
-		tgbotapi.NewKeyboardButton("4"),
-		tgbotapi.NewKeyboardButton("5"),
-		tgbotapi.NewKeyboardButton("6"),
-	),
-)
-
 const layout = "2006-01-02"
 
 type App struct {
@@ -60,12 +47,8 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 
 		switch update.Message.Command() {
-		case "open":
-			msg.ReplyMarkup = numericKeyboard
-		case "close":
-			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 		case "start":
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Enter Birth Day in format YEAR-MONTH-DAY")
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Hello nice to meet you! Can you please enter birth day in format YEAR-MONTH-DAY, so that other users can find out about your birthday on time")
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
 			}
@@ -84,6 +67,11 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 			if err != nil {
 				log.Println(err)
 			}
+			if _, err := bot.Send(msg); err != nil {
+				log.Println(err)
+			}
+		case "help":
+			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Hi I'm a bot and here's what I can do:\n/add - Add a new user not previously registered in the bot\n/all - View a list of all users and their birthdays\n/sub - Subscribe to notifications about the user's birthday\n/tg_id - See when the birthday of the user with the specified tg_username is\n/subs - See whose birthdays you are subscribed to\n/unsub - Unsubscribe from user's birthday notification")
 			if _, err := bot.Send(msg); err != nil {
 				log.Println(err)
 			}
@@ -192,8 +180,9 @@ func (a *App) Run(bot *tgbotapi.BotAPI, ctx context.Context) {
 				log.Println(err)
 			}
 		}
-		//if _, err := bot.Send(msg); err != nil {
-		//	log.Panic(err)
-		//}
 	}
+}
+func (a *App) Stop(bot *tgbotapi.BotAPI) {
+	log.Println("Stopping HB bot")
+	bot.StopReceivingUpdates()
 }
