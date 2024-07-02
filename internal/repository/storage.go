@@ -54,7 +54,7 @@ func (s *Storage) SaveUser(ctx context.Context, tgName string, userName string, 
 		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return ErrUserExist
 		}
-		return err
+		return ErrUserExist
 	}
 
 	return nil
@@ -72,7 +72,7 @@ func (s *Storage) SubSome(ctx context.Context, tgName string, subTgName string) 
 		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
 			return ErrUserExist
 		}
-		return err
+		return ErrUserExist
 	}
 
 	return nil
@@ -129,6 +129,14 @@ func (s *Storage) GetWhoSub(ctx context.Context, tgName string) ([]domain.User, 
 
 	rows, err := s.db.Query("SELECT u.user_name, s.sub_tg_id, u.birth_day FROM subscriptions AS s LEFT JOIN users AS u ON s.sub_tg_id = u.tg_user_name WHERE s.tg_id = ?", tgName)
 
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []domain.User{}, ErrUserNotFound
+		}
+
+		return []domain.User{}, err
+	}
+
 	for rows.Next() { // Iterate and fetch the records from result cursor
 		item := domain.User{}
 		err := rows.Scan(&item.UserName, &item.TgUserName, &item.BirthDay)
@@ -138,14 +146,6 @@ func (s *Storage) GetWhoSub(ctx context.Context, tgName string) ([]domain.User, 
 		users = append(users, item)
 	}
 	fmt.Println(users)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return []domain.User{}, ErrUserNotFound
-		}
-
-		return []domain.User{}, err
-	}
 	return users, nil
 }
 
@@ -186,4 +186,21 @@ func (s *Storage) IsSub(ctx context.Context, tgName string, subTgName string) (b
 	}
 
 	return true, nil
+}
+
+func (s *Storage) Delete(ctx context.Context, tgName string) (err error) {
+	stmt, err := s.db.Prepare("DELETE FROM users WHERE tg_user_name = ?")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.ExecContext(ctx, tgName)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	return nil
 }

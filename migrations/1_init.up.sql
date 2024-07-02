@@ -8,5 +8,6 @@ CREATE TABLE IF NOT EXISTS users
 CREATE TABLE IF NOT EXISTS subscriptions
 (
     tg_id    CHAR,
-    sub_tg_id CHAR
+    sub_tg_id CHAR,
+    PRIMARY KEY (tg_id, sub_tg_id)
 );

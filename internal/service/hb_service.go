@@ -22,6 +22,10 @@ type HBService interface {
 	IsSub(ctx context.Context, userName string, subName string, chatID int64) (msg tgbotapi.MessageConfig, err error)
 }
 
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+)
+
 type Service struct {
 	logger  *slog.Logger
 	storage repository.HappyBDayDB
@@ -41,6 +45,11 @@ func (s *Service) AddUser(
 	birthDay time.Time,
 	chatID int64,
 ) (msg tgbotapi.MessageConfig, err error) {
+	if userName == "" && tgName == "" && birthDay.IsZero() {
+		s.logger.Error("Invalid credentials", sl.Err(ErrInvalidCredentials))
+
+		return tgbotapi.MessageConfig{}, ErrInvalidCredentials
+	}
 	err = s.storage.SaveUser(ctx, tgName, userName, birthDay)
 	if err != nil {
 		s.logger.Error("Error while saving user", sl.Err(err))
